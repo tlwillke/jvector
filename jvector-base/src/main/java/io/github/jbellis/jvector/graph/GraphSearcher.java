@@ -77,7 +77,7 @@ public class GraphSearcher implements Closeable {
         this.approximateResults = new NodeQueue(new BoundedLongHeap(100), NodeQueue.Order.MIN_HEAP);
         this.rerankedResults = new NodeQueue(new BoundedLongHeap(100), NodeQueue.Order.MIN_HEAP);
         this.visited = new IntHashSet();
-        this.pruneSearch = false;
+        this.pruneSearch = true;
     }
 
     private void initializeScoreProvider(SearchScoreProvider scoreProvider) {
@@ -111,6 +111,19 @@ public class GraphSearcher implements Closeable {
         try (var searcher = new GraphSearcher(graph)) {
             var ssp = SearchScoreProvider.exact(queryVector, similarityFunction, vectors);
             return searcher.search(ssp, topK, acceptOrds);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Convenience function for simple one-off searches.  It is caller's responsibility to make sure that it
+     * is the unique owner of the vectors instance passed in here.
+     */
+    public static SearchResult search(VectorFloat<?> queryVector, int topK, int rerankK, RandomAccessVectorValues vectors, VectorSimilarityFunction similarityFunction, GraphIndex graph, Bits acceptOrds) {
+        try (var searcher = new GraphSearcher(graph)) {
+            var ssp = SearchScoreProvider.exact(queryVector, similarityFunction, vectors);
+            return searcher.search(ssp, topK, rerankK, 0.f, 0.f, acceptOrds);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
