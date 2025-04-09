@@ -402,9 +402,7 @@ public class GraphSearcher implements Closeable {
         rerankedResults.setMaxSize(topK);
 
         // add evicted results from the last call back to the candidates
-        evictedResults.foreach((node, score) -> {
-            candidates.push(node, score);
-        });
+        evictedResults.foreach(candidates::push);
         evictedResults.clear();
 
         searchOneLayer(scoreProvider, rerankK, threshold, 0, acceptOrds);
