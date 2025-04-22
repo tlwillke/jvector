@@ -16,8 +16,4 @@
 
 package io.github.jbellis.jvector.example.benchmarks;
 
-/**
- * Marker interface for all benchmark summaries.
- */
-public interface BenchmarkSummary { }
-
+public abstract class AbstractQueryBenchmark implements QueryBenchmark {}

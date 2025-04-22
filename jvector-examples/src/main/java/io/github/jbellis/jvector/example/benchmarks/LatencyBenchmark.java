@@ -24,48 +24,40 @@ import io.github.jbellis.jvector.example.Grid.ConfiguredSystem;
 import io.github.jbellis.jvector.graph.SearchResult;
 
 /**
- * Measures per‐query latency (mean and variance) over N runs,
+ * Measures per‐query latency (mean and standard deviation) over N runs,
  * and counts correct top‐K results.
  */
-public class LatencyBenchmark
-        implements QueryBenchmark<LatencyBenchmark.Summary> {
+public class LatencyBenchmark extends AbstractQueryBenchmark {
+    static private final String DEFAULT_FORMAT = ".3f";
+
+    private final boolean computeAvgLatency;
+    private final boolean computeLatencySTD;
+    private final boolean computeP999Latency;
+    private final String formatAvgLatency;
+    private final String formatLatencySTD;
+    private final String formatP999Latency;
 
     private static volatile long SINK;
 
-    /**
-     * Holds the number of correct results, the average latency (ns),
-     * and the latency variance.
-     */
-    public static class Summary implements BenchmarkSummary {
-        private final double averageLatency;
-        private final double latencyVariance;
-        private final double p999Latency;
-
-        public Summary(double averageLatency, double latencyVariance, double p999Latency) {
-            this.averageLatency   = averageLatency;
-            this.latencyVariance  = latencyVariance;
-            this.p999Latency      = p999Latency;
+    public LatencyBenchmark(boolean computeAvgLatency, boolean computeLatencySTD, boolean computeP999Latency,
+                            String formatAvgLatency, String formatLatencySTD, String formatP999Latency) {
+        if (!(computeAvgLatency || computeLatencySTD || computeP999Latency)) {
+            throw new IllegalArgumentException("At least one parameter must be set to true");
         }
+        this.computeAvgLatency = computeAvgLatency;
+        this.computeLatencySTD = computeLatencySTD;
+        this.computeP999Latency = computeP999Latency;
+        this.formatAvgLatency = formatAvgLatency;
+        this.formatLatencySTD = formatLatencySTD;
+        this.formatP999Latency = formatP999Latency;
+    }
 
-        @Override
-        public String toString() {
-            return String.format(
-                    "LatencySummary{latency (AVG) = %.3fms, (VAR) = %.6fms^2, p999 = %.2fms",
-                    averageLatency, latencyVariance, p999Latency
-            );
-        }
+    public LatencyBenchmark() {
+        this(true, false, false, DEFAULT_FORMAT, DEFAULT_FORMAT, DEFAULT_FORMAT);
+    }
 
-        public double getAverageLatency() {
-            return averageLatency;
-        }
-
-        public double getLatencyVariance() {
-            return latencyVariance;
-        }
-
-        public double getP999Latency() {
-            return p999Latency;
-        }
+    public LatencyBenchmark(String formatAvgLatency, String formatLatencySTD, String formatP999Latency) {
+        this(true, true, true, formatAvgLatency, formatLatencySTD, formatP999Latency);
     }
 
     @Override
@@ -74,7 +66,7 @@ public class LatencyBenchmark
     }
 
     @Override
-    public Summary runBenchmark(
+    public List<Metric> runBenchmark(
             ConfiguredSystem cs,
             int topK,
             int rerankK,
@@ -108,16 +100,27 @@ public class LatencyBenchmark
             }
         }
 
-        double variance = (count > 0) ? (m2 / count) / 1e12: 0.0;
+        mean /= 1e6;
+        double standardDeviation = (count > 0) ? Math.sqrt(m2 / count) / 1e6: 0.0;
 
         // Compute 99.9th percentile
         Collections.sort(latencies);
         int idx = (int)Math.ceil(0.999 * latencies.size()) - 1;
         if (idx < 0) idx = 0;
         if (idx >= latencies.size()) idx = latencies.size() - 1;
-        long p999Latency = latencies.get(idx);
+        double p999Latency = latencies.get(idx) / 1e6;
 
-        return new Summary(mean / 1e6, variance, p999Latency / 1e6);
+        var list = new ArrayList<Metric>();
+        if (computeAvgLatency) {
+            list.add(Metric.of("Mean Latency (ms)", formatAvgLatency, mean));
+        }
+        if (computeLatencySTD) {
+            list.add(Metric.of("STD Latency (ms)", formatLatencySTD, standardDeviation));
+        }
+        if (computeP999Latency) {
+            list.add(Metric.of("p999 Latency (ms)", formatP999Latency, p999Latency));
+        }
+        return list;
     }
 }
 

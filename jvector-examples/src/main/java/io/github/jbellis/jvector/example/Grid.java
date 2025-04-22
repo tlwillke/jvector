@@ -376,50 +376,17 @@ public class Grid {
         int queryRuns = 2;
         System.out.format("Using %s:%n", cs.index);
         // 1) Select benchmarks to run
-        var benchmarks = List.of(
-                new ExecutionTimeBenchmark(),
-                new CountBenchmark(),
-                new RecallBenchmark(),
+        List<QueryBenchmark> benchmarks = List.of(
                 new ThroughputBenchmark(2, 0.1),
-                new LatencyBenchmark()
+                new LatencyBenchmark(),
+                new CountBenchmark(),
+                new AccuracyBenchmark()
         );
         QueryTester tester = new QueryTester(benchmarks);
 
         for (var topK : topKGrid) {
             for (var usePruning : usePruningGrid) {
-                // 2) Specify metrics to report.  Ensure relevant QueryBenchmark is run first.  Required:
-                //   - The String name for each column
-                //   - The relevant BenchmarkSummary.Summary class.
-                //   - The getter for the numerical result
-                //   - The numeric format
-                List<Metric> metrics = List.of(
-                        Metric.of("QPS",
-                                ThroughputBenchmark.Summary.class,
-                                ThroughputBenchmark.Summary::getQueriesPerSecond,
-                                ".1f"),
-
-                        Metric.of("Avg Visited",
-                                CountBenchmark.Summary.class,
-                                CountBenchmark.Summary::getAvgNodesVisited,
-                                ".1f"),
-
-                        Metric.of("Mean Latency (ms)",
-                                LatencyBenchmark.Summary.class,
-                                LatencyBenchmark.Summary::getAverageLatency,
-                                ".3f"),
-
-                        Metric.of("p999 Latency (ms)",
-                                LatencyBenchmark.Summary.class,
-                                LatencyBenchmark.Summary::getP999Latency,
-                                ".3f"),
-
-                        Metric.of("Recall@" + topK,
-                                RecallBenchmark.Summary.class,
-                                RecallBenchmark.Summary::getAverageRecall,
-                                ".2f")
-                );
-
-                BenchmarkTablePrinter printer = new BenchmarkTablePrinter(metrics);
+                BenchmarkTablePrinter printer = new BenchmarkTablePrinter();
                 printer.printConfig(Map.of(
                         "M",                  M,
                         "efConstruction",     efConstruction,
@@ -430,9 +397,7 @@ public class Grid {
                 for (var overquery : efSearchOptions) {
                     int rerankK = (int) (topK * overquery);
 
-                    Map<Class<? extends BenchmarkSummary>,BenchmarkSummary> results =
-                            tester.run(cs, topK, rerankK, usePruning, queryRuns);
-
+                    var results = tester.run(cs, topK, rerankK, usePruning, queryRuns);
                     printer.printRow(overquery, results);
                 }
                 printer.printFooter();
