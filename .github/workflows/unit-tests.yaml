@@ -41,7 +41,7 @@ jobs:
         run: |
           sudo apt install -y gcc
       - uses: actions/checkout@v4
-      - name: Set up JDK
+      - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.jdk }}
@@ -55,7 +55,9 @@ jobs:
           -Dsurefire.failIfNoSpecifiedTests=false
           -Dtest=TestVectorizationProvider
           -DTest_RequireSpecificVectorizationProvider=PanamaVectorizationProvider
+
       - name: Test Panama Support (JDK 20)
+        if: matrix.jdk == '20'
         run: >-
           mvn -X -B -Pjdk20 -pl jvector-tests test -am test
           -DTest_RequireSpecificVectorizationProvider=PanamaVectorizationProvider
@@ -67,7 +69,9 @@ jobs:
           -DTest_RequireSpecificVectorizationProvider=NativeVectorizationProvider
           -Dsurefire.failIfNoSpecifiedTests=false
           -Dtest=TestVectorizationProvider
+
       - name: Compile, run tests and package (JDK 24)
+        if: matrix.jdk == '24'
         run: >-
           mvn -X -B -Punix-amd64-profile -pl jvector-tests -am test
           -DTest_RequireSpecificVectorizationProvider=NativeVectorizationProvider
