@@ -31,7 +31,7 @@ jobs:
           git checkout -b changelog/${{ github.event.inputs.version }}
 
       - name: Update version in package.json
-        run: npm pkg set version "${{ github.event.inputs.version }}"
+        run: npm pkg set version=${{ github.event.inputs.version }}
 
       - name: Generate CHANGELOG.md
         run: npm run version
